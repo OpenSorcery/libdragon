@@ -190,7 +190,7 @@ static inline uint32_t __rdp_ringbuffer_size( void )
  * @param[in] data
  *            32 bits of data to be queued at the end of the current command
  */
-static void __rdp_ringbuffer_queue( uint32_t data )
+void rdp_ringbuffer_queue( uint32_t data )
 {
     /* Only add commands if we have room */
     if( __rdp_ringbuffer_size() + sizeof(uint32_t) >= RINGBUFFER_SIZE ) { return; }
@@ -208,7 +208,7 @@ static void __rdp_ringbuffer_queue( uint32_t data )
  * kicking off execution of the command in the RDP.  After calling this function, it is
  * safe to start writing to the ring buffer again.
  */
-static void __rdp_ringbuffer_send( void )
+void rdp_ringbuffer_send( void )
 {
     /* Don't send nothingness */
     if( __rdp_ringbuffer_size() == 0 ) { return; }
@@ -299,9 +299,9 @@ void rdp_attach_display( display_context_t disp )
     if( disp == 0 ) { return; }
 
     /* Set the rasterization buffer */
-    __rdp_ringbuffer_queue( 0xFF000000 | ((__bitdepth == 2) ? 0x00100000 : 0x00180000) | (__width - 1) );
-    __rdp_ringbuffer_queue( (uint32_t)__get_buffer( disp ) );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( 0xFF000000 | ((__bitdepth == 2) ? 0x00100000 : 0x00180000) | (__width - 1) );
+    rdp_ringbuffer_queue( (uint32_t)__get_buffer( disp ) );
+    rdp_ringbuffer_send();
 }
 
 /**
@@ -349,20 +349,20 @@ void rdp_sync( sync_t sync )
     switch( sync )
     {
         case SYNC_FULL:
-            __rdp_ringbuffer_queue( 0xE9000000 );
+            rdp_ringbuffer_queue( 0xE9000000 );
             break;
         case SYNC_PIPE:
-            __rdp_ringbuffer_queue( 0xE7000000 );
+            rdp_ringbuffer_queue( 0xE7000000 );
             break;
         case SYNC_TILE:
-            __rdp_ringbuffer_queue( 0xE8000000 );
+            rdp_ringbuffer_queue( 0xE8000000 );
             break;
         case SYNC_LOAD:
-            __rdp_ringbuffer_queue( 0xE6000000 );
+            rdp_ringbuffer_queue( 0xE6000000 );
             break;
     }
-    __rdp_ringbuffer_queue( 0x00000000 );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( 0x00000000 );
+    rdp_ringbuffer_send();
 }
 
 /**
@@ -380,9 +380,9 @@ void rdp_sync( sync_t sync )
 void rdp_set_clipping( uint32_t tx, uint32_t ty, uint32_t bx, uint32_t by )
 {
     /* Convert pixel space to screen space in command */
-    __rdp_ringbuffer_queue( 0xED000000 | (tx << 14) | (ty << 2) );
-    __rdp_ringbuffer_queue( (bx << 14) | (by << 2) );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( 0xED000000 | (tx << 14) | (ty << 2) );
+    rdp_ringbuffer_queue( (bx << 14) | (by << 2) );
+    rdp_ringbuffer_send();
 }
 
 /**
@@ -402,9 +402,9 @@ void rdp_set_default_clipping( void )
 void rdp_enable_primitive_fill( void )
 {
     /* Set other modes to fill and other defaults */
-    __rdp_ringbuffer_queue( 0xEFB000FF );
-    __rdp_ringbuffer_queue( 0x00004000 );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( 0xEFB000FF );
+    rdp_ringbuffer_queue( 0x00004000 );
+    rdp_ringbuffer_send();
 }
 
 /**
@@ -428,9 +428,9 @@ void rdp_enable_blend_fill( void )
 void rdp_enable_texture_copy( void )
 {
     /* Set other modes to copy and other defaults */
-    __rdp_ringbuffer_queue( 0xEFA000FF );
-    __rdp_ringbuffer_queue( 0x00004001 );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( 0xEFA000FF );
+    rdp_ringbuffer_queue( 0x00004001 );
+    rdp_ringbuffer_send();
 }
 
 /**
@@ -468,9 +468,9 @@ static uint32_t __rdp_load_texture( uint32_t texslot, uint32_t texloc, mirror_t 
     }
 
     /* Point the RDP at the actual sprite data */
-    __rdp_ringbuffer_queue( 0xFD000000 | ((sprite->bitdepth == 2) ? 0x00100000 : 0x00180000) | (sprite->width - 1) );
-    __rdp_ringbuffer_queue( (uint32_t)sprite->data );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( 0xFD000000 | ((sprite->bitdepth == 2) ? 0x00100000 : 0x00180000) | (sprite->width - 1) );
+    rdp_ringbuffer_queue( (uint32_t)sprite->data );
+    rdp_ringbuffer_send();
 
     /* Figure out the s,t coordinates of the sprite we are copying out of */
     int twidth = sh - sl + 1;
@@ -486,15 +486,15 @@ static uint32_t __rdp_load_texture( uint32_t texslot, uint32_t texloc, mirror_t 
     int round_amount = (real_width % 8) ? 1 : 0;
 
     /* Instruct the RDP to copy the sprite data out */
-    __rdp_ringbuffer_queue( 0xF5000000 | ((sprite->bitdepth == 2) ? 0x00100000 : 0x00180000) | 
+    rdp_ringbuffer_queue( 0xF5000000 | ((sprite->bitdepth == 2) ? 0x00100000 : 0x00180000) |
                                        (((((real_width / 8) + round_amount) * sprite->bitdepth) & 0x1FF) << 9) | ((texloc / 8) & 0x1FF) );
-    __rdp_ringbuffer_queue( ((texslot & 0x7) << 24) | (mirror_enabled == MIRROR_ENABLED ? 0x40100 : 0) | (hbits << 14 ) | (wbits << 4) );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( ((texslot & 0x7) << 24) | (mirror_enabled == MIRROR_ENABLED ? 0x40100 : 0) | (hbits << 14 ) | (wbits << 4) );
+    rdp_ringbuffer_send();
 
     /* Copying out only a chunk this time */
-    __rdp_ringbuffer_queue( 0xF4000000 | (((sl << 2) & 0xFFF) << 12) | ((tl << 2) & 0xFFF) );
-    __rdp_ringbuffer_queue( (((sh << 2) & 0xFFF) << 12) | ((th << 2) & 0xFFF) );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( 0xF4000000 | (((sl << 2) & 0xFFF) << 12) | ((tl << 2) & 0xFFF) );
+    rdp_ringbuffer_queue( (((sh << 2) & 0xFFF) << 12) | ((th << 2) & 0xFFF) );
+    rdp_ringbuffer_send();
 
     /* Save sprite width and height for managed sprite commands */
     cache[texslot & 0x7].width = twidth - 1;
@@ -621,15 +621,15 @@ void rdp_draw_textured_rectangle_scaled( uint32_t texslot, int tx, int ty, int b
     int ys = (int)((1.0 / y_scale) * 1024.0);
 
     /* Set up rectangle position in screen space */
-    __rdp_ringbuffer_queue( 0xE4000000 | (bx << 14) | (by << 2) );
-    __rdp_ringbuffer_queue( ((texslot & 0x7) << 24) | (tx << 14) | (ty << 2) );
+    rdp_ringbuffer_queue( 0xE4000000 | (bx << 14) | (by << 2) );
+    rdp_ringbuffer_queue( ((texslot & 0x7) << 24) | (tx << 14) | (ty << 2) );
 
     /* Set up texture position and scaling to 1:1 copy */
-    __rdp_ringbuffer_queue( (s << 16) | t );
-    __rdp_ringbuffer_queue( (xs & 0xFFFF) << 16 | (ys & 0xFFFF) );
+    rdp_ringbuffer_queue( (s << 16) | t );
+    rdp_ringbuffer_queue( (xs & 0xFFFF) << 16 | (ys & 0xFFFF) );
 
     /* Send command */
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_send();
 }
 
 /**
@@ -723,9 +723,9 @@ void rdp_draw_sprite_scaled( uint32_t texslot, int x, int y, double x_scale, dou
 void rdp_set_primitive_color( uint32_t color )
 {
     /* Set packed color */
-    __rdp_ringbuffer_queue( 0xF7000000 );
-    __rdp_ringbuffer_queue( color );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( 0xF7000000 );
+    rdp_ringbuffer_queue( color );
+    rdp_ringbuffer_send();
 }
 
 /**
@@ -769,9 +769,9 @@ void rdp_draw_filled_rectangle( int tx, int ty, int bx, int by )
     if( tx < 0 ) { tx = 0; }
     if( ty < 0 ) { ty = 0; }
 
-    __rdp_ringbuffer_queue( 0xF6000000 | ( bx << 14 ) | ( by << 2 ) ); 
-    __rdp_ringbuffer_queue( ( tx << 14 ) | ( ty << 2 ) );
-    __rdp_ringbuffer_send();
+    rdp_ringbuffer_queue( 0xF6000000 | ( bx << 14 ) | ( by << 2 ) );
+    rdp_ringbuffer_queue( ( tx << 14 ) | ( ty << 2 ) );
+    rdp_ringbuffer_send();
 }
 
 /**
