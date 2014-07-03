@@ -189,15 +189,18 @@ static inline uint32_t __rdp_ringbuffer_size( void )
  *
  * @param[in] data
  *            32 bits of data to be queued at the end of the current command
+ *
+ * @return 1 if data queued in rdp_ringbuffer, 0 if buffer is full
  */
-void rdp_ringbuffer_queue( uint32_t data )
+int rdp_ringbuffer_queue( uint32_t data )
 {
     /* Only add commands if we have room */
-    if( __rdp_ringbuffer_size() + sizeof(uint32_t) >= RINGBUFFER_SIZE ) { return; }
+    if( __rdp_ringbuffer_size() + sizeof(uint32_t) >= RINGBUFFER_SIZE ) { return 0; }
 
     /* Add data to queue to be sent to RDP */
     rdp_ringbuffer[rdp_end / 4] = data;
     rdp_end += 4;
+    return 1;
 }
 
 /**

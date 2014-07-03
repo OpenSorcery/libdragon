@@ -79,7 +79,7 @@ void rdp_draw_filled_triangle( float x1, float y1, float x2, float y2, float x3,
 void rdp_set_texture_flush( flush_t flush );
 void rdp_close( void );
 
-void rdp_ringbuffer_queue( uint32_t data );
+int rdp_ringbuffer_queue( uint32_t data );
 void rdp_ringbuffer_send( void );
 
 #ifdef __cplusplus
