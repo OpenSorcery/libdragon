@@ -70,7 +70,7 @@ uint32_t get_file_size(FILE *fp)
 
 int swap_bytes(uint8_t *buffer, int size)
 {
-	if(size & 1 == 0)
+	if((size & 1) == 0)
 	{
 		/* Invalid, can only byteswap multiples of 2 */
 		return -1;
@@ -159,7 +159,7 @@ int copy_file(FILE *dest, char *file, int byte_swap)
 
 int output_zeros(FILE *dest, int amount)
 {
-	if(amount & 3 != 0)
+	if((amount & 3) != 0)
 	{
 		/* Don't support odd word alignments */
 		return -1;
@@ -351,7 +351,7 @@ int main(int argc, char *argv[])
 						
 						if(output_zeros(write_file, num_zeros))
 						{
-							fprintf(stderr, "Invalid offset to seek to!\n", output);
+							fprintf(stderr, "Invalid offset to seek to!\n");
 							return -1;
 						}
 						
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 		
 		if(output_zeros(write_file, num_zeros))
 		{
-			fprintf(stderr, "Couldn't pad image!\n", output);
+			fprintf(stderr, "Couldn't pad image!\n");
 			return -1;
 		}
 		
